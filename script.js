@@ -73,9 +73,14 @@
           const submitBtn = contactForm.querySelector('.btn-submit');
           const originalBtnText = submitBtn.innerHTML;
           
+          // Show loading state and disable button
+          submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Sending...';
+          submitBtn.disabled = true;
+          
           const name = document.getElementById("name").value;
           const email = document.getElementById("email").value;
-          const phone = document.getElementById("phone").value;
+          const phoneElement = document.getElementById("phone");
+          const phone = phoneElement ? phoneElement.value : '';
           const comments = document.getElementById("comments").value;
           
           const formData = {
@@ -85,30 +90,7 @@
             message: comments
           };
           
-          // --- Optimistic UI Update ---
-          // Immediately show success message
-          if (statusDiv) {
-            statusDiv.style.display = 'block';
-            statusDiv.style.backgroundColor = 'rgba(255, 182, 70, 0.15)';
-            statusDiv.style.border = '1px solid var(--primary)';
-            statusDiv.style.color = 'var(--white)';
-            statusDiv.innerHTML = 'Thank you! Your message has been sent successfully.';
-          }
-          
-          // Reset the form input fields instantly
-          contactForm.reset();
-          
-          // Change button state instantly to checkmark and disable to prevent double clicks
-          submitBtn.innerHTML = '<i class="fa fa-check me-2"></i>Sent!';
-          submitBtn.disabled = true;
-          
-          // Restore button state after 3 seconds
-          setTimeout(() => {
-            submitBtn.innerHTML = originalBtnText;
-            submitBtn.disabled = false;
-          }, 3000);
-          
-          // Submit to backend silently in the background
+          // Submit to FormSubmit
           fetch("https://formsubmit.co/ajax/shriyankarajbhar@gmail.com", {
             method: "POST",
             headers: { 
@@ -117,9 +99,59 @@
             },
             body: JSON.stringify(formData)
           })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) {
+              return response.json().then(errData => {
+                throw new Error(errData.message || `Server error (${response.status})`);
+              }).catch(() => {
+                throw new Error(`Server returned status ${response.status}`);
+              });
+            }
+            return response.json();
+          })
+          .then(data => {
+            if (data.success === "true" || data.success === true) {
+              // Success feedback
+              if (statusDiv) {
+                statusDiv.style.display = 'block';
+                statusDiv.style.backgroundColor = 'rgba(40, 167, 69, 0.15)'; // Sleek transparent green
+                statusDiv.style.border = '1px solid #28a745';
+                statusDiv.style.color = '#28a745';
+                statusDiv.innerHTML = 'Thank you! Your message has been sent successfully.';
+              }
+              
+              // Reset the form input fields
+              contactForm.reset();
+              
+              // Show checkmark on button
+              submitBtn.innerHTML = '<i class="fa fa-check me-2"></i>Sent!';
+              setTimeout(() => {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+              }, 3000);
+            } else {
+              throw new Error(data.message || "Form submission failed.");
+            }
+          })
           .catch(error => {
-            console.error("Background submission error:", error);
+            console.error("Submission error:", error);
+            if (statusDiv) {
+              statusDiv.style.display = 'block';
+              statusDiv.style.backgroundColor = 'rgba(220, 53, 69, 0.15)'; // Transparent red
+              statusDiv.style.border = '1px solid #dc3545';
+              statusDiv.style.color = '#dc3545';
+              
+              // Custom help text if it looks like activation is needed
+              if (error.message.toLowerCase().includes("activate")) {
+                statusDiv.innerHTML = `<strong>Activation Required:</strong> FormSubmit sent an activation link to your email. Please click that link to activate and try again.`;
+              } else {
+                statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}. Please try again later.`;
+              }
+            }
+            
+            // Restore button state
+            submitBtn.innerHTML = originalBtnText;
+            submitBtn.disabled = false;
           });
         });
       }
