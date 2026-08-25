@@ -86,7 +86,7 @@
           const formData = {
             name: name,
             email: email,
-            phone: phone || 'N/A',
+            phone: phone,
             message: comments
           };
           
@@ -142,7 +142,9 @@
               statusDiv.style.color = '#dc3545';
               
               // Custom help text if it looks like activation is needed
-              if (error.message.toLowerCase().includes("activate")) {
+              if (window.location.protocol === 'file:') {
+                statusDiv.innerHTML = `<strong>Local Testing Error:</strong> FormSubmit AJAX requests cannot be tested by opening the HTML file directly (file://). Please serve the page via a local web server (e.g., VS Code's Live Server, python -m http.server, or npm run dev).`;
+              } else if (error.message.toLowerCase().includes("activate")) {
                 statusDiv.innerHTML = `<strong>Activation Required:</strong> FormSubmit sent an activation link to your email. Please click that link to activate and try again.`;
               } else {
                 statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}. Please try again later.`;
